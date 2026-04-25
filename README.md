@@ -205,8 +205,6 @@ petclinic-microservices-with-db/
 
 ---
 
-[![Portfolio](https://img.shields.io/badge/Portfolio-ogulcan--erdag.com-0D1117?style=flat&logo=vercel&logoColor=white)](https://ogulcan-erdag.com)
-[![GitHub](https://img.shields.io/badge/GitHub-OgulcanErdag-181717?style=flat&logo=github&logoColor=white)](https://github.com/OgulcanErdag)
 
 ---
 
