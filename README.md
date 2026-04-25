@@ -1,161 +1,215 @@
-# Distributed version of the Spring PetClinic Sample Application built with Spring Cloud 
+![microservices](./petclinic_banner_v2.svg)
 
-[![Build Status](https://travis-ci.org/spring-petclinic/spring-petclinic-microservices.svg?branch=master)](https://travis-ci.org/spring-petclinic/spring-petclinic-microservices/) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+# Microservices CI/CD Pipeline
 
-This microservices branch was initially derived from [AngularJS version](https://github.com/spring-petclinic/spring-petclinic-angular1) to demonstrate how to split sample Spring application into [microservices](http://www.martinfowler.com/articles/microservices.html). To achieve that goal we used [Spring Cloud Netflix](https://github.com/spring-cloud/spring-cloud-netflix) technology stack.
+**End-to-end CI/CD pipeline for a Spring Boot microservices application on AWS & Kubernetes**
 
-## Starting services locally without Docker
-Every microservice is a Spring Boot application and can be started locally using IDE or `../mvnw spring-boot:run` command. Please note that supporting services (Config and Discovery Server) must be started before any other application (Customers, Vets, Visits and API).
-Startup of Tracing server, Admin server, Grafana and Prometheus is optional.
-If everything goes well, you can access the following services at given location:
-* Discovery Server - http://localhost:8761
-* Config Server - http://localhost:8888
-* AngularJS frontend (API Gateway) - http://localhost:8080
-* Customers, Vets and Visits Services - random port, check Eureka Dashboard 
-* Tracing Server (Zipkin) - http://localhost:9411/zipkin/ (we use [openzipkin](https://github.com/openzipkin/zipkin/tree/master/zipkin-server))
-* Admin Server (Spring Boot Admin) - http://localhost:9090
-* Grafana Dashboards - http://localhost:3000
-* Prometheus - http://localhost:9091
-* Hystrix Dashboard for Circuit Breaker pattern - http://localhost:7979 - On the home page is a form where you can enter 
-the URL for an event stream to monitor, for example the `api-gateway` service running locally: `http://localhost:8080/actuator/hystrix.stream` 
-or running into docker: `http://api-gateway:8080/actuator/hystrix.stream`
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Jenkins](https://img.shields.io/badge/CI%2FCD-Jenkins-D24939?logo=jenkins&logoColor=white)](https://www.jenkins.io/)
+[![Docker](https://img.shields.io/badge/Container-Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Kubernetes](https://img.shields.io/badge/Orchestration-Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![AWS](https://img.shields.io/badge/Cloud-AWS-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/)
+[![Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC?logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![Prometheus](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?logo=prometheus&logoColor=white)](https://prometheus.io/)
+[![Grafana](https://img.shields.io/badge/Dashboards-Grafana-F46800?logo=grafana&logoColor=white)](https://grafana.com/)
 
+</div>
 
-You can tell Config Server to use your local Git repository by using `local` Spring profile and setting
-`GIT_REPO` environment variable, for example:
-`-Dspring.profiles.active=local -DGIT_REPO=/projects/spring-petclinic-microservices-config`
+---
 
-## Starting services locally with docker-compose
-In order to start entire infrastructure using Docker, you have to build images by executing `./mvnw clean install -PbuildDocker` 
-from a project root. Once images are ready, you can start them with a single command
-`docker-compose up`. Containers startup order is coordinated with [`dockerize` script](https://github.com/jwilder/dockerize). 
-After starting services it takes a while for API Gateway to be in sync with service registry,
-so don't be scared of initial Zuul timeouts. You can track services availability using Eureka dashboard
-available by default at http://localhost:8761.
+## Overview
 
-*NOTE: Under MacOSX or Windows, make sure that the Docker VM has enough memory to run the microservices. The default settings
-are usually not enough and make the `docker-compose up` painfully slow.*
+This project implements a **production-grade CI/CD pipeline** for the [Spring Petclinic Microservices](https://github.com/spring-petclinic/spring-petclinic-microservices) application — a distributed system built with Spring Cloud. The pipeline covers the full software delivery lifecycle: from local development through QA automation, staging, and production deployment on Kubernetes, with integrated monitoring via Prometheus and Grafana.
 
-## Understanding the Spring Petclinic application
+The project is structured around **29 Milestones (MSPs)** organized into epics that map directly to real-world DevOps workflows.
 
-[See the presentation of the Spring Petclinic Framework version](http://fr.slideshare.net/AntoineRey/spring-framework-petclinic-sample-application)
+---
 
-[A blog bost introducing the Spring Petclinic Microsevices](http://javaetmoi.com/2018/10/architecture-microservices-avec-spring-cloud/) (french language)
+## Pipeline Architecture
 
-You can then access petclinic here: http://localhost:8080/
+```
+┌──────────┐    ┌───────────────┐    ┌──────────┐    ┌─────────────┐    ┌────────────┐    ┌───────────┐
+│  CODE    │───▶│  BUILD & TEST │───▶│ REGISTRY │───▶│ QA/STAGING  │───▶│ PRODUCTION │───▶│  MONITOR  │
+│          │    │               │    │          │    │             │    │            │    │           │
+│   Git    │    │    Jenkins    │    │ AWS ECR  │    │ EKS Cluster │    │ RKE + K8s  │    │Prometheus │
+│  Maven   │    │    Docker     │    │ Nexus    │    │ Selenium    │    │ Rancher    │    │ Grafana   │
+└──────────┘    └───────────────┘    └──────────┘    └─────────────┘    └────────────┘    └───────────┘
+     │                 │                   │                 │                  │
+  feature/*          dev/*            release/*          release/*           main/*
+  bugfix/*                                              (nightly)            (weekly)
+```
+
+---
+
+## Tech Stack
+
+| Category                   | Tools                                                     |
+| -------------------------- | --------------------------------------------------------- |
+| **Application**            | Spring Boot, Spring Cloud Netflix (Eureka, Zuul, Hystrix) |
+| **Build**                  | Maven Wrapper, Docker, Docker Compose                     |
+| **CI/CD Server**           | Jenkins on AWS EC2                                        |
+| **Container Registry**     | AWS ECR, Nexus Repository                                 |
+| **Infrastructure as Code** | Terraform                                                 |
+| **Kubernetes**             | AWS EKS (eksctl), RKE (High Availability), Rancher        |
+| **QA Automation**          | Selenium, JUnit, JaCoCo (Code Coverage)                   |
+| **Monitoring**             | Prometheus, Grafana, Micrometer, Zipkin (Tracing)         |
+| **DNS & TLS**              | AWS Route 53, cert-manager, Let's Encrypt                 |
+
+---
+
+## Project Structure — MSP Overview
+
+| Epic                          | MSPs            | Description                                                 |
+| ----------------------------- | --------------- | ----------------------------------------------------------- |
+| Local Development Environment | MSP-1 → MSP-5   | EC2 dev server, GitHub setup, Maven build, Terraform        |
+| Local Development Build       | MSP-6 → MSP-8   | Dockerfiles, Docker Compose, image build scripts            |
+| CI Server Setup               | MSP-9 → MSP-12  | Jenkins server, configuration, CI pipeline                  |
+| Testing Environment           | MSP-11 → MSP-13 | Unit tests, code coverage (JaCoCo), Selenium                |
+| Registry Setup                | MSP-14          | AWS ECR Docker registry via Jenkins job                     |
+| QA Automation                 | MSP-15 → MSP-18 | Kubernetes QA environment, YAML manifests, nightly pipeline |
+| QA for Release                | MSP-19 → MSP-22 | Permanent EKS QA infrastructure, weekly release pipeline    |
+| Staging & Production          | MSP-23 → MSP-27 | HA RKE cluster, Rancher, Nexus, staging & prod pipelines    |
+| Domain & TLS                  | MSP-28          | Route 53 DNS, cert-manager, Let's Encrypt SSL               |
+| Monitoring                    | MSP-29          | Prometheus + Grafana NodePort services on Kubernetes        |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- AWS CLI configured with appropriate IAM permissions
+- `kubectl`, `eksctl`, `helm` installed
+- Docker & Docker Compose
+- Java 11 (Amazon Corretto recommended)
+- Terraform >= 1.0
+
+### 1 — Start services locally (without Docker)
+
+Each microservice is a standalone Spring Boot application. Start Config Server and Discovery Server first:
+
+```bash
+# Config Server must start first
+cd spring-petclinic-config-server && ../mvnw spring-boot:run
+
+# Then Discovery Server
+cd spring-petclinic-discovery-server && ../mvnw spring-boot:run
+
+# Then remaining services
+cd spring-petclinic-customers-service && ../mvnw spring-boot:run
+cd spring-petclinic-vets-service      && ../mvnw spring-boot:run
+cd spring-petclinic-visits-service    && ../mvnw spring-boot:run
+cd spring-petclinic-api-gateway       && ../mvnw spring-boot:run
+```
+
+### 2 — Start services with Docker Compose
+
+```bash
+# Build all Docker images
+./mvnw clean install -PbuildDocker
+
+# Start the full stack
+docker-compose up
+```
+
+### 3 — Access local services
+
+| Service                 | URL                           |
+| ----------------------- | ----------------------------- |
+| API Gateway (Frontend)  | http://localhost:8080         |
+| Eureka Discovery Server | http://localhost:8761         |
+| Config Server           | http://localhost:8888         |
+| Zipkin Tracing          | http://localhost:9411/zipkin/ |
+| Prometheus              | http://localhost:9091         |
+| Grafana                 | http://localhost:3000         |
+| Spring Boot Admin       | http://localhost:9090         |
+
+---
+
+## CI/CD Pipelines
+
+Three Jenkins pipelines cover the full delivery lifecycle:
+
+**`petclinic-ci`** — Triggered on every push to `dev`, `feature/*`, and `bugfix/*` branches. Runs unit tests and generates code coverage reports.
+
+**`petclinic-nightly`** — Triggered nightly on `dev` branch. Builds Docker images, pushes to ECR, deploys to QA Kubernetes environment, and runs Selenium automation tests.
+
+**`petclinic-weekly`** — Triggered weekly on `release` branch. Deploys to staging environment on EKS, runs full QA suite, and promotes to production on merge to `main`.
+
+**`petclinic-prod`** — Triggered on every commit to `main` via GitHub webhook. Deploys to the permanent production RKE Kubernetes cluster under `petclinic-prod-ns` namespace.
+
+---
+
+## Monitoring
+
+Prometheus and Grafana are deployed on the Kubernetes cluster and exposed via NodePort services:
+
+| Service    | NodePort |
+| ---------- | -------- |
+| Prometheus | 30002    |
+| Grafana    | 30003    |
+
+The Spring Petclinic services are instrumented with [Micrometer](https://micrometer.io/) and expose custom metrics via `@Timed` annotations:
+
+- `petclinic.owner` and `petclinic.pet` — from `customers-service`
+- `petclinic.visit` — from `visits-service`
+
+A pre-built Grafana dashboard is available at:
+`http://<node-ip>:30003/d/69JXeR0iw/spring-petclinic-metrics`
+
+---
+
+## Infrastructure
+
+The production environment uses a **High Availability RKE Kubernetes cluster** on AWS EC2, managed via [Rancher](https://rancher.com/). The QA environment runs on **AWS EKS** provisioned with `eksctl`.
+
+TLS certificates for the production domain are issued automatically via **Let's Encrypt** using `cert-manager` with the HTTP-01 ACME challenge.
+
+---
+
+## Application Screenshots
+
+**Spring Petclinic UI**
 
 ![Spring Petclinic Microservices screenshot](docs/application-screenshot.png)
 
-
-**Architecture diagram of the Spring Petclinic Microservices**
+**Microservices Architecture**
 
 ![Spring Petclinic Microservices architecture](docs/microservices-architecture-diagram.jpg)
 
-
-## In case you find a bug/suggested improvement for Spring Petclinic Microservices
-
-Our issue tracker is available here: https://github.com/spring-petclinic/spring-petclinic-microservices/issues
-
-## Database configuration
-
-In its default configuration, Petclinic uses an in-memory database (HSQLDB) which gets populated at startup with data.
-A similar setup is provided for MySql in case a persistent database configuration is needed.
-Dependency for Connector/J, the MySQL JDBC driver is already included in the `pom.xml` files.
-
-### Start a MySql database
-
-You may start a MySql database with docker:
-
-```
-docker run -e MYSQL_ROOT_PASSWORD=petclinic -e MYSQL_DATABASE=petclinic -p 3306:3306 mysql:5.7.8
-```
-or download and install the MySQL database (e.g., MySQL Community Server 5.7 GA), which can be found here: https://dev.mysql.com/downloads/
-
-### Use the Spring 'mysql' profile
-
-To use a MySQL database, you have to start 3 microservices (`visits-service`, `customers-service` and `vets-services`)
-with the `mysql` Spring profile. Add the `--spring.profiles.active=mysql` as programm argument.
-
-By default, at startup, database schema will be created and data will be populated.
-You may also manualy create the PetClinic database and data by executing the `"db/mysql/{schema,data}.sql"` scripts of each 3 microservices. 
-In the `application.yml` of the [Configuration repository], set the `initialization-mode` to `never`.
-
-If you are running the microservices with Docker, you have to add the `mysql` profile into the (Dockerfile)[docker/Dockerfile]:
-```
-ENV SPRING_PROFILES_ACTIVE docker,mysql
-```
-In the `mysql section` of the `application.yml` from the [Configuration repository], you have to change 
-the host and port of your MySQL JDBC connection string. 
-
-## Custom metrics monitoring
-
-Grafana and Prometheus are included in the `docker-compose.yml` configuration, and the public facing applications
-have been instrumented with [MicroMeter](https://micrometer.io) to collect JVM and custom business metrics.
-
-A JMeter load testing script is available to stress the application and generate metrics: [petclinic_test_plan.jmx](spring-petclinic-api-gateway/src/test/jmeter/petclinic_test_plan.jmx)
+**Grafana Metrics Dashboard**
 
 ![Grafana metrics dashboard](docs/grafana-custom-metrics-dashboard.png)
 
-### Using Prometheus
+---
 
-* Prometheus can be accessed from your local machine at [http://localhost:9091]()
+## Repository Structure
 
-### Using Grafana with Prometheus
+```
+petclinic-microservices-with-db/
+├── spring-petclinic-api-gateway/
+├── spring-petclinic-config-server/
+├── spring-petclinic-customers-service/
+├── spring-petclinic-discovery-server/
+├── spring-petclinic-vets-service/
+├── spring-petclinic-visits-service/
+├── spring-petclinic-admin-server/
+├── spring-petclinic-ui/
+├── jenkins/                        # Jenkinsfiles for all pipelines
+├── kubernetes/                     # K8s YAML manifests
+├── terraform/                      # IaC for dev/QA infrastructure
+├── docker/                         # Dockerfiles & Compose files
+├── ansible/                        # (optional) server provisioning
+└── docker-compose.yml
+```
 
-* An anonymous access and a Prometheus datasource are setup.
-* A `Spring Petclinic Metrics` Dashboard is available at the URL [http://localhost:3000/d/69JXeR0iw/spring-petclinic-metrics]().
-You will find the JSON configuration file here: [docker/grafana/dashboards/grafana-petclinic-dashboard.json]().
-* You may create your own dashboard or import the [Micrometer/SpringBoot dashboard](https://grafana.com/dashboards/4701) via the Import Dashboard menu item.
-The id for this dashboard is `4701`.
+---
 
-### Custom metrics
+[![Portfolio](https://img.shields.io/badge/Portfolio-ogulcan--erdag.com-0D1117?style=flat&logo=vercel&logoColor=white)](https://ogulcan-erdag.com)
+[![GitHub](https://img.shields.io/badge/GitHub-OgulcanErdag-181717?style=flat&logo=github&logoColor=white)](https://github.com/OgulcanErdag)
 
-Spring Boot registers a lot number of core metrics: JVM, CPU, Tomcat, Logback... 
-The Spring Boot auto-configuration enables the instrumentation of requests handled by Spring MVC.
-All those three REST controllers `OwnerResource`, `PetResource` and `VisitResource` have been instrumented by the `@Timed` Micrometer annotation at class level.
+---
 
-* `customers-service` application has the following custom metrics enabled:
-  * @Timed: `petclinic.owner`
-  * @Timed: `petclinic.pet`
-* `visits-service` application has the following custom metrics enabled:
-  * @Timed: `petclinic.visit`
+## License
 
-## Looking for something in particular?
-
-| Spring Cloud components         | Resources  |
-|---------------------------------|------------|
-| Configuration server            | [Config server properties](spring-petclinic-config-server/src/main/resources/application.yml) and [Configuration repository] |
-| Service Discovery               | [Eureka server](spring-petclinic-discovery-server) and [Service discovery client](spring-petclinic-vets-service/src/main/java/org/springframework/samples/petclinic/vets/VetsServiceApplication.java) |
-| API Gateway                     | [Zuul reverse proxy](spring-petclinic-api-gateway/src/main/java/org/springframework/samples/petclinic/api/ApiGatewayApplication.java) and [Routing configuration](https://github.com/spring-petclinic/spring-petclinic-microservices-config/blob/master/api-gateway.yml) |
-| Docker Compose                  | [Spring Boot with Docker guide](https://spring.io/guides/gs/spring-boot-docker/) and [docker-compose file](docker-compose.yml) |
-| Circuit Breaker                 | [Hystrix fallback method](spring-petclinic-api-gateway/src/main/java/org/springframework/samples/petclinic/api/application/VisitsServiceClient.java)  |
-| Grafana / Prometheus Monitoring | [Micrometer implementation](https://micrometer.io/), [Spring Boot Actuator Production Ready Metrics] |
-
- Front-end module  | Files |
-|-------------------|-------|
-| Node and NPM      | [The frontend-maven-plugin plugin downloads/installs Node and NPM locally then runs Bower and Gulp](spring-petclinic-ui/pom.xml)  |
-| Bower             | [JavaScript libraries are defined by the manifest file bower.json](spring-petclinic-ui/bower.json)  |
-| Gulp              | [Tasks automated by Gulp: minify CSS and JS, generate CSS from LESS, copy other static resources](spring-petclinic-ui/gulpfile.js)  |
-| Angular JS        | [app.js, controllers and templates](spring-petclinic-ui/src/scripts/)  |
-
-
-## Interesting Spring Petclinic forks
-
-The Spring Petclinic master branch in the main [spring-projects](https://github.com/spring-projects/spring-petclinic)
-GitHub org is the "canonical" implementation, currently based on Spring Boot and Thymeleaf.
-
-This [spring-petclinic-microservices](https://github.com/spring-petclinic/spring-petclinic-microservices/) project is one of the [several forks](https://spring-petclinic.github.io/docs/forks.html) 
-hosted in a special GitHub org: [spring-petclinic](https://github.com/spring-petclinic).
-If you have a special interest in a different technology stack
-that could be used to implement the Pet Clinic then please join the community there.
-
-
-# Contributing
-
-The [issue tracker](https://github.com/spring-petclinic/spring-petclinic-microservices/issues) is the preferred channel for bug reports, features requests and submitting pull requests.
-
-For pull requests, editor preferences are available in the [editor config](.editorconfig) for easy use in common text editors. Read more and download plugins at <http://editorconfig.org>.
-
-
-[Configuration repository]: https://github.com/spring-petclinic/spring-petclinic-microservices-config
-[Spring Boot Actuator Production Ready Metrics]: https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-metrics.html
+This project is licensed under the [Apache 2.0 License](https://opensource.org/licenses/Apache-2.0).
