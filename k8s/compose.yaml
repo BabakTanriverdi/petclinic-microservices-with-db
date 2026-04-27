@@ -1,0 +1,113 @@
+services:
+  config-server:
+    image: "{{ .Values.IMAGE_TAG_CONFIG_SERVER }}"
+    ports:
+     - 8888:8888
+    labels:
+      kompose.image-pull-secret: "regcred"
+  discovery-server:
+    image: "{{ .Values.IMAGE_TAG_DISCOVERY_SERVER }}"
+    ports:
+     - 8761:8761
+    labels:
+      kompose.image-pull-secret: "regcred"
+      kompose.init.containers.name: "init-config-server"
+      kompose.init.containers.image: busybox
+      kompose.init.containers.command: "'sh', '-c', 'until nc -z config-server:8888; do echo waiting for config-server; sleep 2; done;'"
+
+  customers-service:
+    image: "{{ .Values.IMAGE_TAG_CUSTOMERS_SERVICE }}"
+    deploy:
+      replicas: 2
+    ports:
+    - 8081:8081
+    labels:
+      kompose.image-pull-secret: "regcred"
+      kompose.init.containers.name: "init-discovery-server"
+      kompose.init.containers.image: busybox
+      kompose.init.containers.command: "'sh', '-c', 'until nc -z discovery-server:8761; do echo waiting for discovery-server; sleep 2; done;'"
+      
+  visits-service:
+    image: "{{ .Values.IMAGE_TAG_VISITS_SERVICE }}"
+    deploy:
+      replicas: 2
+    ports:
+     - 8082:8082
+    labels:
+      kompose.image-pull-secret: "regcred"
+      kompose.init.containers.name: "init-discovery-server"
+      kompose.init.containers.image: busybox
+      kompose.init.containers.command: "'sh', '-c', 'until nc -z discovery-server:8761; do echo waiting for discovery-server; sleep 2; done;'"
+
+  vets-service:
+    image: "{{ .Values.IMAGE_TAG_VETS_SERVICE }}"
+    deploy:
+      replicas: 2
+    ports:
+     - 8083:8083
+    labels:
+      kompose.image-pull-secret: "regcred"
+      kompose.init.containers.name: "init-discovery-server"
+      kompose.init.containers.image: busybox
+      kompose.init.containers.command: "'sh', '-c', 'until nc -z discovery-server:8761; do echo waiting for discovery-server; sleep 2; done;'"
+
+  api-gateway:
+    image: "{{ .Values.IMAGE_TAG_API_GATEWAY }}"
+    deploy:
+      replicas: 1
+    ports:
+     - 8080:8080
+    labels:
+      kompose.image-pull-secret: "regcred"
+      kompose.service.expose: "{{ .Values.DNS_NAME }}"
+      kompose.service.expose.ingress-class-name: "nginx"
+      kompose.service.type: "nodeport"
+      kompose.service.nodeport.port: "30001"
+      kompose.init.containers.name: "init-discovery-server"
+      kompose.init.containers.image: busybox
+      kompose.init.containers.command: "'sh', '-c', 'until nc -z discovery-server:8761; do echo waiting for discovery-server; sleep 2; done;'"
+
+  tracing-server:
+    image: openzipkin/zipkin
+    ports:
+     - 9411:9411
+  admin-server:
+    image: "{{ .Values.IMAGE_TAG_ADMIN_SERVER }}"
+    ports:
+     - 9090:9090
+    labels:
+      kompose.image-pull-secret: "regcred"
+      kompose.init.containers.name: "init-discovery-server"
+      kompose.init.containers.image: busybox
+      kompose.init.containers.command: "'sh', '-c', 'until nc -z discovery-server:8761; do echo waiting for discovery-server; sleep 2; done;'"
+
+  hystrix-dashboard:
+    image: "{{ .Values.IMAGE_TAG_HYSTRIX_DASHBOARD }}"
+    ports:
+     - 7979:7979
+    labels:
+      kompose.image-pull-secret: "regcred"
+      kompose.init.containers.name: "init-discovery-server"
+      kompose.init.containers.image: busybox
+      kompose.init.containers.command: "'sh', '-c', 'until nc -z discovery-server:8761; do echo waiting for discovery-server; sleep 2; done;'"
+
+  grafana-server:
+    image: "{{ .Values.IMAGE_TAG_GRAFANA_SERVICE }}"
+    ports:
+    - 3000:3000
+    labels:
+      kompose.image-pull-secret: "regcred"
+  prometheus-server:
+    image: "{{ .Values.IMAGE_TAG_PROMETHEUS_SERVICE }}"
+    ports:
+    - 9091:9090
+    labels:
+      kompose.image-pull-secret: "regcred"
+
+  mysql-server:
+    image: mysql:5.7.44
+    environment: 
+      MYSQL_ROOT_PASSWORD: petclinic
+      MYSQL_DATABASE: petclinic
+    ports:
+    - 3306:3306
