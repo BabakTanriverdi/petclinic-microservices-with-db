@@ -43,6 +43,19 @@
         <docker.plugin.version>1.2.0</docker.plugin.version>
     </properties>
 
+    <distributionManagement>
+    <repository>
+        <id>nexus</id>
+        <name>maven-releases</name>
+        <url>http://172.31.85.162:8081/repository/maven-releases/</url>
+    </repository>
+    <snapshotRepository>
+        <id>nexus</id>
+        <name>maven-snapshots</name>
+        <url>http://172.31.85.162:8081/repository/maven-snapshots/</url>
+    </snapshotRepository>
+    </distributionManagement>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -85,6 +98,28 @@
             </activation>
             <build>
                 <plugins>
+
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <version>0.8.10</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                            </execution>
+                            <!-- attached to Maven test phase -->
+                            <execution>
+                                <id>report</id>
+                                <phase>test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f compose.yaml -o petclinic_chart/templates
+    kompose.image-pull-secret: regcred
+    kompose.init.containers.command: '''sh'', ''-c'', ''until nc -z config-server:8888; do echo waiting for config-server; sleep 2; done;'''
+    kompose.init.containers.image: busybox
+    kompose.init.containers.name: init-config-server
+    kompose.version: 1.36.0 (ae2a39403)
+  labels:
+    io.kompose.service: discovery-server
+  name: discovery-server
+spec:
+  ports:
+    - name: "8761"
+      port: 8761
+      targetPort: 8761
+  selector:
+    io.kompose.service: discovery-server
