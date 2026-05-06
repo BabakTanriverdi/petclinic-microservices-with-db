@@ -1,3 +1,22 @@
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   annotations:
+#     kompose.cmd: kompose convert -f compose.yaml -o petclinic_chart/templates
+#     kompose.version: 1.36.0 (ae2a39403)
+#   labels:
+#     io.kompose.service: mysql-server
+#   name: mysql-server
+# spec:
+#   ports:
+#     - name: "3306"
+#       port: 3306
+#       targetPort: 3306
+#   selector:
+#     io.kompose.service: mysql-server
+
+
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,9 +27,5 @@ metadata:
     io.kompose.service: mysql-server
   name: mysql-server
 spec:
-  ports:
-    - name: "3306"
-      port: 3306
-      targetPort: 3306
-  selector:
-    io.kompose.service: mysql-server
+  type: ExternalName
+  externalName: petclinic.ck9sou6ma4pc.us-east-1.rds.amazonaws.com
